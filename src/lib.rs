@@ -14,7 +14,7 @@ use std::string::FromUtf8Error;
 use std::sync::Arc;
 use std::{mem, ptr, str};
 
-use zmq_sys::{errno, RawFd};
+use zmq_sys::{errno, RawFd, zmq_ctx_set, ZMQ_IO_THREADS};
 
 macro_rules! zmq_try {
     ($($tt:tt)*) => {{
@@ -421,9 +421,16 @@ pub struct Context {
 impl Context {
     /// Create a new reference-counted context handle.
     pub fn new() -> Context {
+        let ptr = unsafe{
+            let inner = zmq_sys::zmq_ctx_new();
+            zmq_ctx_set(inner, ZMQ_IO_THREADS as i32, 4);
+            inner
+        };
+
+
         Context {
             raw: Arc::new(RawContext {
-                ctx: unsafe { zmq_sys::zmq_ctx_new() },
+                ctx: ptr,
             }),
         }
     }
