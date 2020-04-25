@@ -14,7 +14,7 @@ use std::string::FromUtf8Error;
 use std::sync::Arc;
 use std::{mem, ptr, str};
 
-use zmq_sys::{errno, RawFd, zmq_ctx_set, ZMQ_IO_THREADS};
+use zmq_sys::{errno, zmq_ctx_get, zmq_ctx_set, RawFd, ZMQ_IO_THREADS, ZMQ_THREAD_NAME_PREFIX};
 
 macro_rules! zmq_try {
     ($($tt:tt)*) => {{
@@ -32,6 +32,7 @@ mod sockopt;
 use crate::message::msg_ptr;
 pub use crate::message::Message;
 pub use crate::SocketType::*;
+use std::ffi::{CStr, CString};
 
 /// `zmq`-specific Result type.
 pub type Result<T> = result::Result<T, Error>;
@@ -421,18 +422,23 @@ pub struct Context {
 impl Context {
     /// Create a new reference-counted context handle.
     pub fn new() -> Context {
-        let ptr = unsafe{
-            let inner = zmq_sys::zmq_ctx_new();
-            zmq_ctx_set(inner, ZMQ_IO_THREADS as i32, 4);
-            inner
-        };
-
-
         Context {
             raw: Arc::new(RawContext {
-                ctx: ptr,
+                ctx: unsafe { zmq_sys::zmq_ctx_new() },
             }),
         }
+    }
+
+    pub fn set_number_of_io_threads(&mut self, n: usize) -> Result<()> {
+        if unsafe { zmq_ctx_set(self.raw.ctx, ZMQ_IO_THREADS as i32, n as i32) } < 0 {
+            return Err(errno_to_error());
+        }
+        Ok(())
+    }
+
+    pub fn get_number_of_io_threads(&self) -> Result<i32> {
+        let n = unsafe { zmq_ctx_get(self.raw.ctx, ZMQ_IO_THREADS as i32) };
+        Ok(n)
     }
 
     /// Create a new socket.
