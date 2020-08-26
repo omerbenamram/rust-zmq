@@ -429,6 +429,13 @@ impl Context {
         }
     }
 
+    pub fn set_io_thread_name_prefix(&mut self, n: usize) -> Result<()> {
+        if unsafe { zmq_ctx_set(self.raw.ctx, ZMQ_THREAD_NAME_PREFIX as i32, n as i32) } < 0 {
+            return Err(errno_to_error());
+        }
+        Ok(())
+    }
+
     pub fn set_number_of_io_threads(&mut self, n: usize) -> Result<()> {
         if unsafe { zmq_ctx_set(self.raw.ctx, ZMQ_IO_THREADS as i32, n as i32) } < 0 {
             return Err(errno_to_error());
